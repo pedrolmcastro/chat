@@ -1,4 +1,5 @@
 CXX := g++
+ZIP := chat.zip
 CLIENT := client/client.out
 SERVER := server/server.out
 LDLIBS := -lncurses -lpthread
@@ -16,5 +17,8 @@ client: $(CLIENT)
 server: $(SERVER)
 	@./$(SERVER)
 
+zip:
+	@zip $(ZIP) -r . ../README.md
+
 clean:
-	@rm -f $(CLIENT) $(SERVER)
+	@rm -f $(CLIENT) $(SERVER) $(ZIP)
