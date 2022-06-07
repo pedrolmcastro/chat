@@ -21,7 +21,8 @@ public:
     Client();
     ~Client();
 
-    bool connect(unsigned port);
+    bool connect(const std::string& ip, unsigned port);
+
     void send(const std::string& message);
     bool receive(std::array<char, Message::LENGTH>& buffer);
 

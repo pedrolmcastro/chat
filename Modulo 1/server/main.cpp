@@ -26,7 +26,7 @@ int main() {
     Server server;
 
     Terminal terminal;
-    terminal.port(to_string(server.PORT) + " Waiting");
+    terminal.host(server.host() + " Waiting");
 
 
     thread sender(Main::sender, ref(server), ref(terminal));
@@ -73,7 +73,7 @@ void Main::receiver(Server& server, Terminal& terminal) {
     while (Execution::run() && !server.accept());
 
 
-    terminal.port(to_string(server.PORT));
+    terminal.host(server.host());
     terminal.clear();
 
 

@@ -21,7 +21,7 @@ public:
     std::string read();
 
     void message(const Message::Parsed& parsed);
-    void port(const std::string& port = "None");
+    void host(const std::string& host = "None");
     void error(const std::string& description);
 
     void clear();

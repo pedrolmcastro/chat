@@ -16,7 +16,6 @@
 
 class Server {
 public:
-    const unsigned PORT = 6667;
     const Color COLOR = Color::YELLOW;
     const std::string NICKNAME = "Server";
 
@@ -24,10 +23,15 @@ public:
     ~Server();
 
     bool accept();
+
     bool send(const std::string& message);
     bool receive(std::array<char, Message::LENGTH>& buffer);
 
+    std::string host();
+
 private:
+    const unsigned PORT = 6667;
+
     int socket;
     std::atomic_int client = ATOMIC_VAR_INIT(-1);
 
@@ -36,4 +40,6 @@ private:
         .sin_port   = htons(PORT),
         .sin_addr   = { .s_addr = htonl(INADDR_ANY), }, // Bind to all available interfaces
     };
+
+    std::string ip();
 };

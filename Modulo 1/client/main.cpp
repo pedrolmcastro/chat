@@ -27,11 +27,10 @@ int main() {
     Client client;
 
     Terminal terminal;
-    terminal.port();
+    terminal.host();
 
-    unsigned port;
+
     bool connected = false;
-
 
     while (!connected) {
         string input = terminal.read();
@@ -46,8 +45,8 @@ int main() {
 
         switch (parsed.command) {
             case Command::Code::CONNECT:
-                port = parsed.port;
-                if (!(connected = client.connect(port))) terminal.error("Failed to connect!");
+                if (!(connected = client.connect(parsed.ip, parsed.port))) terminal.error("Failed to connect!");
+                else                                                       terminal.host(parsed.ip + ':' + to_string(parsed.port));
                 break;
             
             case Command::Code::CLEAR:
@@ -62,7 +61,6 @@ int main() {
         }
     }
 
-    terminal.port(to_string(port));
     terminal.clear();
 
 

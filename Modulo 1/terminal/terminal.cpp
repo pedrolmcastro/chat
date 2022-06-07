@@ -95,14 +95,14 @@ void Terminal::message(const Message::Parsed& parsed) {
     print(chat, parsed.message + '\n');
 }
 
-void Terminal::port(const std::string& port) {
+void Terminal::host(const std::string& host) {
     {
         const lock_guard<std::mutex> lock(mutex);
         ::move(0, 0);
         clrtoeol();
     }
 
-    print(stdscr, "Port: " + port, Color::GREEN);
+    print(stdscr, "Host: " + host, Color::GREEN);
 }
 
 void Terminal::error(const string& description) {

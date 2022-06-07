@@ -15,6 +15,7 @@ public:
     struct Parsed {
         Code command;
         unsigned port;
+        std::string ip;
     };
 
     static std::string to_string(Code command);

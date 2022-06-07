@@ -32,7 +32,8 @@ Command::Parsed Command::parse(const string& command) {
 
     if (splited[0] == to_string(Code::CONNECT)) {
         try {
-            parsed.port = stoul(splited.at(1));
+            parsed.ip = splited.at(1);
+            parsed.port = stoul(splited.at(2));
             parsed.command = Code::CONNECT;
         }
         catch (...) {

@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdexcept>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -20,6 +21,9 @@ using namespace std;
 Client::Client() {
     socket = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket == -1) throw runtime_error("[Error] Failed to create socket!");
+
+    int option = 1;
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1) throw runtime_error("[Error] Failed to set socket reuse flag!");
 }
 
 Client::~Client() {
@@ -27,8 +31,9 @@ Client::~Client() {
 }
 
 
-bool Client::connect(unsigned port) {
+bool Client::connect(const std::string& ip, unsigned port) {
     server_address.sin_port = htons(port);
+    if (inet_pton(AF_INET, ip.c_str(), &server_address.sin_addr) < 1) return false;
 
     int connected = ::connect(socket, (struct sockaddr *) &server_address, sizeof(server_address));
     if (connected == -1) return false;
@@ -42,6 +47,7 @@ bool Client::connect(unsigned port) {
 
     return true;
 }
+
 
 void Client::send(const string& message) {
     for (array<char, Message::LENGTH>& buffer : Message::split(message, NICKNAME, COLOR)) {

@@ -5,9 +5,11 @@
 
 #include <array>
 #include <string>
+#include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdexcept>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -21,6 +23,9 @@ Server::Server() {
     socket = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket == -1) throw runtime_error("[Error] Failed to create socket!");
 
+    int option = 1;
+    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) == -1) throw runtime_error("[Error] Failed to set socket reuse flag!");
+
     if (bind(socket, (struct sockaddr *) &address, sizeof(address)) == -1) throw runtime_error("[Error] Failed to bind socket!");
     if (listen(socket, 1) == -1) throw runtime_error("[Error] Failed to listen in socket!");
 
@@ -33,6 +38,8 @@ Server::Server() {
 }
 
 Server::~Server() {
+    shutdown(socket, SHUT_RDWR);
+
     if (client != -1) close(client);
     close(socket);
 }
@@ -49,6 +56,7 @@ bool Server::accept() {
 
     return client != -1;
 }
+
 
 bool Server::send(const string& message) {
     if (client == -1) return false;
@@ -68,4 +76,20 @@ bool Server::receive(array<char, Message::LENGTH>& buffer) {
     if (received == -1 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) throw runtime_error("[Error] Failed to receive message!");
 
     return received != -1;
+}
+
+
+string Server::host() {
+    return ip() + ':' + to_string(PORT);
+}
+
+
+string Server::ip() {
+    array<char, 256> name;
+    if (gethostname(name.data(), sizeof(name)) == -1) throw runtime_error("[Error] Failed to get host name!");
+
+    hostent* host = gethostbyname(name.data());
+    if (host == NULL) throw runtime_error("[Error] Failed to get host!");
+    
+    return inet_ntoa(*(in_addr*)host->h_addr_list[0]);
 }
