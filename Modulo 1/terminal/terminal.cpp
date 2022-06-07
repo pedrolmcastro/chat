@@ -77,12 +77,12 @@ string Terminal::read() {
     while (Execution::run() && (letter = wgetch(input)) != '\n' && letter != KEY_ENTER) {
         if (letter == KEY_BACKSPACE && !buffer.empty()) {
             buffer.pop_back();
+            this->buffer(buffer);
         }
         else if (isprint(letter)) {
             buffer.push_back(letter);
+            this->buffer(buffer);
         }
-
-        this->buffer(buffer);
     }
 
     this->buffer();
