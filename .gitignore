@@ -32,4 +32,4 @@
 *.app
 
 # Local Configuration
-.vscode/*
+.vscode

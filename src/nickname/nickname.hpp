@@ -5,8 +5,14 @@
 #pragma once
 
 
+#include <string>
 #include <cstddef>
+#include <string_view>
 
-namespace Nickname {
-    const size_t LENGTH = 20;
-}
+class Nickname {
+public:
+    static bool valid(std::string_view nickname);
+
+private:
+    inline static const size_t MAXIMUM = 50;
+};

@@ -5,12 +5,4 @@
 #pragma once
 
 
-enum class Color {
-    WHITE,
-    RED,
-    BLUE,
-    CYAN,
-    GREEN,
-    YELLOW,
-    MAGENTA,
-};
+enum class Color { NONE = -1, WHITE = 0, RED, BLUE, CYAN, GREEN, YELLOW, MAGENTA };
