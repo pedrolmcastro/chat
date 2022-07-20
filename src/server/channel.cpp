@@ -76,5 +76,5 @@ void Server::Channel::foreach(function<void(int)> callback) {
 
 
 bool Server::Channel::valid(string_view channel) {
-    return !channel.empty() && (channel[0] == '#' || channel[0] == '&') && channel.size() <= MAXIMUM && std::find(channel.begin(), channel.end(), ',') == channel.end();
+    return !channel.empty() && (channel[0] == '#' || channel[0] == '&') && channel.size() <= MAXIMUM && channel.find(',') == string_view::npos;
 }
