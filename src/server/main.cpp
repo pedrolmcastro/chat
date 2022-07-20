@@ -29,7 +29,7 @@ void run() {
     Server server;
     Terminal terminal;
     unordered_map<string, Server::Channel> channels;
-    unordered_map<int, tuple<Client, Message::Queue, int>> clients;
+    unordered_map<int, tuple<Client, Message::Queue, string, string, int>> clients;
 
 
     events.subscribe(server, Event::Type::READ);
@@ -40,9 +40,9 @@ void run() {
 
     auto disconnect = [&](int descriptor) {
         terminal.print("[Disconnect] Client "s + to_string(descriptor), Color::YELLOW);
-        auto& client = get<0>(clients[descriptor]);
+        auto&[client, messages, nickname, channel, fails] = clients[descriptor];
         
-        if (!client.channel.empty()) channels[client.channel].leave(client.nickname);
+        if (!channel.empty()) channels[channel].leave(nickname);
         events.unsubscribe(descriptor);
         clients.erase(descriptor);
     };
@@ -80,7 +80,7 @@ void run() {
                     clients.emplace(client, make_tuple(Client(client), Message::Queue(
                         [&, client]{ events.subscribe(client, Event::Type::WRITE); },
                         [&, client]{ events.unsubscribe(client, Event::Type::WRITE); }
-                    ), 0));
+                    ), ""s, ""s, 0));
 
                     terminal.header(server.header(clients.size(), channels.size()));
                     terminal.print("[Connect] Client "s + to_string(client), Color::BLUE);
@@ -92,7 +92,7 @@ void run() {
 
 
             if (descriptor != terminal && descriptor != server && (event & Event::Type::READ)) {
-                auto&[client, messages, fails] = clients[descriptor];
+                auto&[client, messages, nickname, channel, fails] = clients[descriptor];
                 
                 auto received = client.receive([&]{ if (++fails == Server::FAILS) disconnect(descriptor); });
                 if (!received) continue;
@@ -102,19 +102,17 @@ void run() {
                 auto message = Message::parse(received->data());
 
                 if (!Command::is(Message::retrieve(message))) {
-                    if (client.channel.empty()) {
+                    if (channel.empty()) {
                         enqueue(messages, Command::error("No joined channel"s));
                         continue;
                     }
 
-                    auto& channel = channels[client.channel];
-
-                    if (channel.muted(client.nickname)) {
+                    if (channels[channel].muted(nickname)) {
                         enqueue(messages, Command::error("Muted"s));
                     }
                     else {
-                        Message::colorize(*received, channel.admin(client.nickname) ? Color::MAGENTA : Color::BLUE);
-                        channel.foreach([&](int descriptor){ auto&[client, messages, fails] = clients[descriptor]; messages.enqueue(*received); });
+                        Message::colorize(*received, channels[channel].admin(nickname) ? Color::MAGENTA : Color::BLUE);
+                        channels[channel].foreach([&](int descriptor){ auto&[client, messages, nickname, channel, fails] = clients[descriptor]; messages.enqueue(*received); });
                     }
 
                     continue;
@@ -126,9 +124,9 @@ void run() {
                 switch (command) {
                     case Command::Code::JOIN:
                         if (!Server::Channel::valid(parameter)) { enqueue(messages, Command::error("Invalid channel"s));          continue; }
-                        else if (!client.channel.empty())       { enqueue(messages, Command::error("Already joined a channel"s)); continue; }
+                        else if (!channel.empty())              { enqueue(messages, Command::error("Already joined a channel"s)); continue; }
 
-                        client.nickname = get<1>(message);
+                        nickname = get<1>(message);
 
                         if (!channels.contains(parameter)) {
                             channels.emplace(parameter, [&, parameter](int descriptor){
@@ -139,11 +137,11 @@ void run() {
                             terminal.header(server.header(clients.size(), channels.size()));
                         }
 
-                        if (!channels[parameter].join(client.nickname, descriptor)) {
+                        if (!channels[parameter].join(nickname, descriptor)) {
                             enqueue(messages, Command::error("Nickname already used in channel"s));
                         }
                         else {
-                            client.channel = parameter;
+                            channel = parameter;
                             enqueue(messages, Command::tostring(Command::Code::JOIN, parameter));
                             terminal.print("[Join] Client "s + to_string(descriptor) + " in channel "s + parameter, Color::WHITE);
                         }
@@ -151,37 +149,37 @@ void run() {
                         break;
                     
                     case Command::Code::KICK: {
-                        if (client.channel.empty())                                { enqueue(messages, Command::error("No joined channel"s)); continue; }
-                        else if (!channels[client.channel].admin(client.nickname)) { enqueue(messages, Command::error("Permission denied"s)); continue; }
+                        if (channel.empty())                         { enqueue(messages, Command::error("No joined channel"s)); continue; }
+                        else if (!channels[channel].admin(nickname)) { enqueue(messages, Command::error("Permission denied"s)); continue; }
 
-                        if (auto kicked = channels[client.channel].find(parameter); kicked == -1) enqueue(messages, Command::error("Client not found"s));
-                        else                                                                      disconnect(kicked);
+                        if (auto kicked = channels[channel].find(parameter); kicked == -1) enqueue(messages, Command::error("Client not found"s));
+                        else                                                               disconnect(kicked);
 
                         break;
                     }
                     
                     case Command::Code::MUTE:
-                        if (client.channel.empty())                                enqueue(messages, Command::error("No joined channel"s));
-                        else if (!channels[client.channel].admin(client.nickname)) enqueue(messages, Command::error("Permission denied"s));
-                        else if (!channels[client.channel].mute(parameter))        enqueue(messages, Command::error("Unable to mute client"s));
+                        if (channel.empty())                         enqueue(messages, Command::error("No joined channel"s));
+                        else if (!channels[channel].admin(nickname)) enqueue(messages, Command::error("Permission denied"s));
+                        else if (!channels[channel].mute(parameter)) enqueue(messages, Command::error("Unable to mute client"s));
                         break;
                     
                     case Command::Code::PING:
-                        enqueue(messages, client.channel.empty() ? Command::error("No joined channel"s) : "Pong"s);
+                        enqueue(messages, channel.empty() ? Command::error("No joined channel"s) : "Pong"s);
                         break;
                     
                     case Command::Code::UNMUTE:
-                        if (client.channel.empty())                                enqueue(messages, Command::error("No joined channel"s));
-                        else if (!channels[client.channel].admin(client.nickname)) enqueue(messages, Command::error("Permission denied"s));
-                        else if (!channels[client.channel].unmute(parameter))      enqueue(messages, Command::error("Unable to unmute client"s));
+                        if (channel.empty())                           enqueue(messages, Command::error("No joined channel"s));
+                        else if (!channels[channel].admin(nickname))   enqueue(messages, Command::error("Permission denied"s));
+                        else if (!channels[channel].unmute(parameter)) enqueue(messages, Command::error("Unable to unmute client"s));
                         break;
                     
                     case Command::Code::WHOIS:
-                        if (client.channel.empty())                                { enqueue(messages, Command::error("No joined channel"s)); continue; }
-                        else if (!channels[client.channel].admin(client.nickname)) { enqueue(messages, Command::error("Permission denied"s)); continue; }
+                        if (channel.empty())                         { enqueue(messages, Command::error("No joined channel"s)); continue; }
+                        else if (!channels[channel].admin(nickname)) { enqueue(messages, Command::error("Permission denied"s)); continue; }
 
-                        if (auto who = channels[client.channel].find(parameter); who == -1) enqueue(messages, Command::error("Client not found"s));
-                        else                                                                enqueue(messages, get<0>(clients[who]).ip());
+                        if (auto who = channels[channel].find(parameter); who == -1) enqueue(messages, Command::error("Client not found"s));
+                        else                                                         enqueue(messages, get<0>(clients[who]).ip());
                         break;
                     
                     default:
@@ -192,7 +190,7 @@ void run() {
 
 
             if (descriptor != terminal && descriptor != server && (event & Event::Type::WRITE)) {
-                auto&[client, messages, fails] = clients[descriptor];
+                auto&[client, messages, nickname, channel, fails] = clients[descriptor];
 
                 if (client.send(*messages.front(), [&]{ if (++fails == Server::FAILS) disconnect(descriptor); })) {
                     messages.dequeue();

@@ -26,14 +26,11 @@ Client::Client() {
     int option = 1;
     if (setsockopt(descriptor, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &option, sizeof(option)) == -1) throw runtime_error("Failed to set socket reuse flag!");
 
-    srand(time(nullptr));
-    nickname = "Unknown-"s + to_string(rand());
-
     resetsending();
     resetreceiving();
 }
 
-Client::Client(int descriptor): connected(true), descriptor(descriptor) {
+Client::Client(int descriptor): descriptor(descriptor) {
     resetsending();
     resetreceiving();
 }
@@ -42,9 +39,6 @@ Client::Client(Client&& other) {
     descriptor = exchange(other.descriptor, -1);
 
     sending = move(other.sending);
-    channel = move(other.channel);
-    nickname = move(other.nickname);
-    connected = move(other.connected);
     receiving = move(other.receiving);
 }
 
@@ -60,12 +54,11 @@ Client::operator int() const {
 
 bool Client::connect(const std::string& ip) {
     if (inet_pton(AF_INET, ip.c_str(), &serveraddress.sin_addr.s_addr) < 1) return false;
-    return connected = ::connect(descriptor, (struct sockaddr*) &serveraddress, sizeof(serveraddress)) != -1;
+    return ::connect(descriptor, (struct sockaddr*) &serveraddress, sizeof(serveraddress)) != -1;
 }
 
 
 bool Client::send(const Message::Array& message, function<void()> onfail) {
-    if (!connected) return false;
     auto&[buffer, index, end] = sending;
 
     if (end == 0) {
@@ -92,8 +85,6 @@ bool Client::send(const Message::Array& message, function<void()> onfail) {
 }
 
 optional<Message::Array> Client::receive(function<void()> onfail) {
-    if (!connected) return nullopt;
-
     auto&[buffer, index] = receiving;
     auto bytes = recv(descriptor, &buffer[index], buffer.size() - index, 0);
 
@@ -149,6 +140,6 @@ string Client::ip() const {
     return string(buffer.data()) + '\n';
 }
 
-string Client::header() const {
+string Client::header(const string& nickname, const string& channel, bool connected) const {
     return nickname + " | "s + (connected ? "Connected"s : "Disconnected"s) + " | "s + channel;
 }

@@ -20,11 +20,6 @@
 
 class Client {
 public:
-    std::string channel;
-    std::string nickname;
-    bool connected = false;
-
-
     Client();
     Client(int descriptor);
     Client(Client&& other);
@@ -39,7 +34,7 @@ public:
     std::optional<Message::Array> receive(std::function<void()> onfail = {});
 
     std::string ip() const;
-    std::string header() const;
+    std::string header(const std::string& nickname, const std::string& channel, bool connected) const;
 
 private:
     int descriptor;

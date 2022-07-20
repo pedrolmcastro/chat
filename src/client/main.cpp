@@ -3,6 +3,7 @@
 // Pedro Lucas de Moliner de Castro - 11795784
 
 
+#include <string>
 #include <csignal>
 #include <iostream>
 #include <stdexcept>
@@ -19,20 +20,24 @@ using namespace std;
 
 
 void run() {
+    srand(time(nullptr));
+
     Event events;
     Client client;
     Terminal terminal;
     Message::Queue messages([&]{ events.subscribe(client, Event::Type::WRITE); }, [&]{ events.unsubscribe(client, Event::Type::WRITE); });
 
+    auto channel = ""s;
+    auto execute = true;
+    auto connected = false;
+    auto nickname = "Unknown-"s + to_string(rand());
+
 
     events.subscribe(terminal, Event::Type::READ);
-    terminal.header(client.header());
-
+    terminal.header(client.header(nickname, channel, connected));
 
     signal(SIGINT, [](int){}); // Ignore Ctrl + C
-    
 
-    auto execute = true;
 
     while (execute) {
         for (auto[descriptor, event] : events.wait()) {
@@ -41,8 +46,8 @@ void run() {
                 if (!input || input->empty()) continue;
 
                 if (!Command::is(*input)) {
-                    if (client.channel.empty()) terminal.error("No joined channel"s);
-                    else                        for (auto& message : Message::split(Color::NONE, client.nickname, *input)) messages.enqueue(message);
+                    if (channel.empty()) terminal.error("No joined channel"s);
+                    else                 for (auto& message : Message::split(Color::NONE, nickname, *input)) messages.enqueue(message);
                     continue;
                 }
 
@@ -55,15 +60,15 @@ void run() {
                         break;
                     
                     case Command::Code::CONNECT:
-                        if (client.connected) {
+                        if (connected) {
                             terminal.error("Already connected to a server"s);
                         }
-                        else if (!client.connect(parameter)) {
+                        else if (!(connected = client.connect(parameter))) {
                             terminal.error("Failed to connect to the server"s);
                         }
                         else {
                             events.subscribe(client, Event::Type::READ);
-                            terminal.header(client.header());
+                            terminal.header(client.header(nickname, channel, connected));
                         }
                         break;
                     
@@ -76,18 +81,18 @@ void run() {
                         break;
                     
                     case Command::Code::JOIN:
-                        if (!client.connected)            terminal.error("No connected server"s);
-                        else if (!client.channel.empty()) terminal.error("Already joined a channel"s);
-                        else                              messages.enqueue(Message::split(Color::NONE, client.nickname, Command::tostring(command, parameter))[0]);
+                        if (!connected)            terminal.error("No connected server"s);
+                        else if (!channel.empty()) terminal.error("Already joined a channel"s);
+                        else                       messages.enqueue(Message::split(Color::NONE, nickname, Command::tostring(command, parameter))[0]);
                         break;
                     
                     case Command::Code::NICKNAME:
-                        if (!client.channel.empty()) {
+                        if (!channel.empty()) {
                             terminal.error("Already joined a channel"s);
                         }
                         else {
-                            client.nickname = parameter;
-                            terminal.header(client.header());
+                            nickname = parameter;
+                            terminal.header(client.header(nickname, channel, connected));
                         }
                         break;
 
@@ -96,8 +101,8 @@ void run() {
                         break;
                     
                     default: // Kick, Mute, Ping, Unmute, Whois
-                        if (client.channel.empty()) terminal.error("No joined channel"s);
-                        else                        messages.enqueue(Message::split(Color::NONE, client.nickname, Command::tostring(command, parameter))[0]);
+                        if (channel.empty()) terminal.error("No joined channel"s);
+                        else                 messages.enqueue(Message::split(Color::NONE, nickname, Command::tostring(command, parameter))[0]);
                 }
             }
 
@@ -121,8 +126,8 @@ void run() {
                     terminal.error(parameter);
                 }
                 else if (command == Command::Code::JOIN) {
-                    client.channel = parameter;
-                    terminal.header(client.header());
+                    channel = parameter;
+                    terminal.header(client.header(nickname, channel, connected));
                 }
             }
 
