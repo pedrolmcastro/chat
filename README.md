@@ -6,7 +6,7 @@
 - Gustavo Henrique Brunelli        - 11801053
 - Pedro Lucas de Moliner de Castro - 11795784
 
-> Este trabalho está disponível, também, no [GitHub](https://github.com/pedrolmcastro/chat).
+> Este trabalho está disponível, também, no [GitHub](https://github.com/pedrolmcastro/chat) e uma apresentação em vídeo pode ser vista no [Youtube](https://youtu.be/uJkikt2dz8M).
 
 
 ## Dependências
